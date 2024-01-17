@@ -7,7 +7,7 @@
 </head>
 <body>
 
-    <form action="/campgrounds" method="POST">
+    <form action="/campgrounds/<%=campground._id%>?_method=PUT" method="POST">
         <div>
             <label for="title">Title</label>
             <input type="text" name="campground[title]" id="title" value="<%= campground.title %>">
@@ -20,7 +20,7 @@
     </form>
 
     <div>
-        <a href="/campgrounds">Back to Campground</a>
+        <a href="/campgrounds/<%= campground._id%>">Back to Campground</a>
     </div>
     
 </body>
