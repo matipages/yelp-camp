@@ -2,6 +2,7 @@ const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
 const ejsMate = require('ejs-mate');
+const {campgroundSchema} =  require('./schemas.js')
 const catchAsync = require('./utils/catchAsync')
 const ExpressError = require('./utils/ExpressError')
 const methodOverride = require('method-override');
@@ -27,6 +28,16 @@ app.use(express.urlencoded ({extended: true}));
 app.use(methodOverride('_method'));
 
 
+const validateCampground = (req, res, next) => {
+    const { error } = campgroundSchema.validate(req.body);
+    if(error) {
+        const msg = error.details.map(element =>element.message).join(',');
+        throw new ExpressError(msg, 400);
+    }else{
+        next();
+    }
+}
+
 app.get('/', (req,res)=> {
     res.render('home');
 })
@@ -40,10 +51,11 @@ app.get('/campgrounds/new', (req,res) =>{ //este bloque de codigo va antes de el
     res.render('campgrounds/new');
 });
 
-app.post('/campgrounds', catchAsync(async (req, res, next)=>{
-        const campground = new Campground(req.body.campground);
-        await campground.save();
-        res.redirect(`campgrounds/${campground._id}`)
+app.post('/campgrounds', validateCampground, catchAsync(async (req, res, next)=>{
+    //if(!req.body.campground) throw new ExpressError('Invalid Campground Data');
+    const campground = new Campground(req.body.campeground);
+    await campground.save();
+    res.redirect(`campgrounds/${campground._id}`)
 }))
 
 
@@ -58,7 +70,7 @@ app.get('/campgrounds/:id/edit', catchAsync(async(req, res) =>{
 
 }));
 
-app.put('/campgrounds/:id', catchAsync(async(req, res) =>{
+app.put('/campgrounds/:id', validateCampground, catchAsync(async(req, res) =>{
     const {id} = req.params;
     const campground = await Campground.findByIdAndUpdate(id, {...req.body.campground });
     res.redirect(`/campgrounds/${campground._id}`);
@@ -75,10 +87,10 @@ app.all('*',(req, res, next) =>{
 })
 
 app.use((err, req, res, next) =>{
-    const{statusCode = 500, message = 'Something went wrong'} = err;
-    res.status(statusCode).send(message);
+    const{statusCode = 500 } = err;
+    if(!err.message) err.message = 'Something Went Wrong!'
+    res.status(statusCode).render('error', {err});
 })
-
 
 app.listen(3000, ()=> {
     console.log("Listening on PORT 3000");
