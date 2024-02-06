@@ -7,6 +7,7 @@ const catchAsync = require('./utils/catchAsync')
 const ExpressError = require('./utils/ExpressError')
 const methodOverride = require('method-override');
 const Campground = require('./models/campground');
+const Review = require('./models/review');
 
 main().catch(err => console.log(err));
 
@@ -31,7 +32,7 @@ app.use(methodOverride('_method'));
 const validateCampground = (req, res, next) => {
     const { error } = campgroundSchema.validate(req.body);
     if(error) {
-        const msg = error.details.map(element =>element.message).join(',');
+        const msg = error.details.map(element =>element.message).join(','); //lista los errores separados por una coma, pero no tiene importancia ya que se maneja un solo error
         throw new ExpressError(msg, 400);
     }else{
         next();
@@ -53,7 +54,7 @@ app.get('/campgrounds/new', (req,res) =>{ //este bloque de codigo va antes de el
 
 app.post('/campgrounds', validateCampground, catchAsync(async (req, res, next)=>{
     //if(!req.body.campground) throw new ExpressError('Invalid Campground Data');
-    const campground = new Campground(req.body.campeground);
+    const campground = new Campground(req.body.campground);
     await campground.save();
     res.redirect(`campgrounds/${campground._id}`)
 }))
@@ -67,7 +68,6 @@ app.get('/campgrounds/:id', catchAsync(async(req, res) =>{
 app.get('/campgrounds/:id/edit', catchAsync(async(req, res) =>{
     const campground = await Campground.findById(req.params.id);
     res.render('campgrounds/edit', {campground});
-
 }));
 
 app.put('/campgrounds/:id', validateCampground, catchAsync(async(req, res) =>{
@@ -80,7 +80,20 @@ app.delete('/campgrounds/:id', catchAsync(async(req, res)=>{
     const {id} = req.params;
     await Campground.findByIdAndDelete(id);
     res.redirect('/campgrounds');
+}))
+
+//-------------REVIEWS---------------
+
+app.post('/campgrounds/:id/reviews', catchAsync(async (req, res) =>{
+    const campground = await Campground.findById(req.params.id);
+    const review = new Review(req.body.review);
+    campground.reviews.push(review);
+    await review.save();
+    await campground.save();
+    res.redirect(`/campgrounds/${campground._id}`);
 }));
+
+
 
 app.all('*',(req, res, next) =>{
     next(new ExpressError('Page Not Found', 404))
