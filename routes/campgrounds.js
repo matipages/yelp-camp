@@ -1,31 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const catchAsync = require('../utils/catchAsync')
-const ExpressError = require('../utils/ExpressError')
 const Campground = require('../models/campground');
-const {campgroundSchema} =  require('../schemas.js')
-const {isLoggedIn} = require('../middleware')
+const {isLoggedIn, validateCampground, isAuthor} = require('../middleware')
 
-
-const validateCampground = (req, res, next) => {
-    const { error } = campgroundSchema.validate(req.body);
-    if(error) {
-        const msg = error.details.map(element =>element.message).join(','); //lista los errores separados por una coma, pero no tiene importancia ya que se maneja un solo error
-        throw new ExpressError(msg, 400);
-    }else{
-        next();
-    }
-}
-
-const isAuthor = async (req, res, next) =>{
-    const { id } = req.params;
-    const campground = await Campground.findById(id);
-    if(!campground.author.equals(req.user._id)) {
-        req.flash('error', 'You dont have permission to do that!');
-        return res.redirect(`/campgrounds/${id}`);
-    }
-    next();
-}
 
 
 router.get('/', catchAsync(async (req, res)=>{
@@ -47,7 +25,12 @@ router.post('/', isLoggedIn, validateCampground, catchAsync(async (req, res, nex
 
 
 router.get('/:id', catchAsync(async(req, res) =>{
-    const campground = await Campground.findById(req.params.id).populate('reviews').populate('author');
+    const campground = await Campground.findById(req.params.id).populate({
+        path: 'reviews',
+        populate: {
+            path: 'author'
+        }
+    }).populate('author');
     if(!campground){
         req.flash('error', 'Cannot find that campground!');
         res.redirect('/campgrounds');
